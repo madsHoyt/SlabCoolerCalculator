@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>CoolDT - Pipe Cooldown Calculator</title>
+        <script
+            src="https://kit.fontawesome.com/144a64cf0a.js"
+            crossorigin="anonymous"
+        ></script>
+        <link rel="stylesheet" href="/styles.css" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>CoolDT</h1>
+                <p>Multi-Layer Cooldown Time Calculator</p>
+            </div>
+
+            <div class="content">
+                <div class="section">
+                    <h2>Temperature Parameters</h2>
+                    <div class="input-group">
+                        <div class="input-field">
+                            <label>Initial Temperature (°C)</label>
+                            <input
+                                type="number"
+                                id="initialTemp"
+                                value="50"
+                                step="0.1"
+                            />
+                        </div>
+                        <div class="input-field">
+                            <label>Ambient Temperature (°C)</label>
+                            <input
+                                type="number"
+                                id="ambientTemp"
+                                value="7"
+                                step="0.1"
+                            />
+                        </div>
+                        <div class="input-field">
+                            <label>Final Temperature (°C)</label>
+                            <input
+                                type="number"
+                                id="finalTemp"
+                                value="20"
+                                step="0.1"
+                            />
+                        </div>
+                        <div class="input-field">
+                            <label>Heat Transfer Coefficient (W/m²/K)</label>
+                            <input
+                                type="number"
+                                id="heatCoef"
+                                value="100"
+                                step="1"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Pipe Layers</h2>
+                    <div id="layersContainer">
+                        <div class="layer" data-layer="0">
+                            <h3>Layer 0</h3>
+                            <div class="input-group">
+                                <div class="input-field">
+                                    <label>Length (m)</label>
+                                    <input
+                                        type="number"
+                                        class="diameter"
+                                        value="0.15"
+                                        step="0.001"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Conductivity (W/m/K)</label>
+                                    <input
+                                        type="number"
+                                        class="conductivity"
+                                        value="1"
+                                        step="0.001"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Density (kg/m³)</label>
+                                    <input
+                                        type="number"
+                                        class="density"
+                                        value="1000"
+                                        step="1"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Heat Capacity (J/kg/K)</label>
+                                    <input
+                                        type="number"
+                                        class="heatCapacity"
+                                        value="4180"
+                                        step="1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="layer" data-layer="1">
+                            <h3>Layer 1</h3>
+                            <div class="input-group">
+                                <div class="input-field">
+                                    <label>Length (m)</label>
+                                    <input
+                                        type="number"
+                                        class="diameter"
+                                        value="0.18"
+                                        step="0.001"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Conductivity (W/m/K)</label>
+                                    <input
+                                        type="number"
+                                        class="conductivity"
+                                        value="45"
+                                        step="0.001"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Density (kg/m³)</label>
+                                    <input
+                                        type="number"
+                                        class="density"
+                                        value="7800"
+                                        step="1"
+                                    />
+                                </div>
+                                <div class="input-field">
+                                    <label>Heat Capacity (J/kg/K)</label>
+                                    <input
+                                        type="number"
+                                        class="heatCapacity"
+                                        value="450"
+                                        step="1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="buttons">
+                        <button class="add-layer-btn" onclick="addLayer()">
+                            + Add Layer
+                        </button>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button class="calculate-btn" onclick="calculate()">
+                        Calculate Cooldown Time
+                    </button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Calculating cooldown time...</p>
+                </div>
+
+                <div class="results" id="results">
+                    <h2>Results</h2>
+                    <div>
+                        <strong>Cooldown Time:</strong>
+                        <div class="result-value" id="cooldownTime">--</div>
+                    </div>
+                    <details>
+                        <summary
+                            style="
+                                cursor: pointer;
+                                font-weight: 600;
+                                margin-bottom: 10px;
+                            "
+                        >
+                            View Detailed Output
+                        </summary>
+                        <div class="output-data" id="detailedOutput"></div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Load the compiled WebAssembly module -->
+        <script src="cooldt.js"></script>
+
+        <script>
+            let layerCount = 2;
+            let Module = null;
+
+            // Initialize the WebAssembly module
+            CoolDTModule({
+                print: function (text) {
+                    console.log("WASM stdout:", text);
+                },
+                printErr: function (text) {
+                    console.error("WASM stderr:", text);
+                },
+            })
+                .then(function (module) {
+                    Module = module;
+                    console.log(
+                        "CoolDT WebAssembly module loaded successfully!"
+                    );
+                    document.querySelector(".calculate-btn").disabled = false;
+                })
+                .catch(function (err) {
+                    console.error("Failed to load WASM module:", err);
+                    alert(
+                        "Failed to load calculation engine. Please refresh the page."
+                    );
+                });
+
+            function addLayer() {
+                if (layerCount >= 19) {
+                    alert("Maximum 19 layers allowed");
+                    return;
+                }
+
+                const container = document.getElementById("layersContainer");
+                const newLayer = document.createElement("div");
+                newLayer.className = "layer";
+                newLayer.setAttribute("data-layer", layerCount);
+                newLayer.innerHTML = `
+                <div class="layer-header">
+                    <h3>Layer ${layerCount}</h3>
+                    <button class="delete-layer-btn" onclick="deleteLayer(this)"><b>X</b>
+</button>
+                </div>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label>Length (m)</label>
+                        <input type="number" class="diameter" value="0.28" step="0.001">
+                    </div>
+                    <div class="input-field">
+                        <label>Conductivity (W/m/K)</label>
+                        <input type="number" class="conductivity" value="0.3" step="0.001">
+                    </div>
+                    <div class="input-field">
+                        <label>Density (kg/m³)</label>
+                        <input type="number" class="density" value="800" step="1">
+                    </div>
+                    <div class="input-field">
+                        <label>Heat Capacity (J/kg/K)</label>
+                        <input type="number" class="heatCapacity" value="2000" step="1">
+                    </div>
+                </div>
+            `;
+                container.appendChild(newLayer);
+                layerCount++;
+            }
+
+            function deleteLayer(button) {
+                const layer = button.closest(".layer");
+                layer.remove();
+            }
+
+            function generateInputData() {
+                const initialTemp =
+                    document.getElementById("initialTemp").value;
+                const ambientTemp =
+                    document.getElementById("ambientTemp").value;
+                const finalTemp = document.getElementById("finalTemp").value;
+                const heatCoef = document.getElementById("heatCoef").value;
+
+                let inputData = `${initialTemp}\t${ambientTemp}\t${finalTemp}\t${heatCoef}\n`;
+
+                const layers = document.querySelectorAll(".layer");
+                layers.forEach((layer) => {
+                    const diameter = layer.querySelector(".diameter").value;
+                    const conductivity =
+                        layer.querySelector(".conductivity").value;
+                    const density = layer.querySelector(".density").value;
+                    const heatCapacity =
+                        layer.querySelector(".heatCapacity").value;
+                    inputData += `${diameter}\t${conductivity}\t${density}\t${heatCapacity}\n`;
+                });
+
+                return inputData;
+            }
+
+            function calculate() {
+                if (!Module) {
+                    alert(
+                        "WebAssembly module is still loading. Please wait..."
+                    );
+                    return;
+                }
+
+                document.getElementById("loading").classList.add("show");
+                document.getElementById("results").classList.remove("show");
+
+                try {
+                    // Generate input data
+                    const inputData = generateInputData();
+
+                    // Write input data to virtual filesystem
+                    Module.FS.writeFile("input.dat", inputData);
+
+                    // Capture stdout
+                    let stdout = "";
+                    let stderr = "";
+
+                    Module.print = function (text) {
+                        stdout += text + "\n";
+                    };
+                    Module.printErr = function (text) {
+                        stderr += text + "\n";
+                    };
+
+                    // Call the main function with input file argument
+                    Module.callMain(["input.dat"]);
+
+                    // Read the output file
+                    let outputData = "";
+                    try {
+                        outputData = Module.FS.readFile("input.txt", {
+                            encoding: "utf8",
+                        });
+                    } catch (e) {
+                        console.error("Could not read output file:", e);
+                        outputData =
+                            "Output file not generated. Check console for errors.\n\n" +
+                            stderr;
+                    }
+
+                    // Parse cooldown time from output
+                    const cooldownMatch = outputData.match(
+                        /Cool Down Time\s+([0-9.]+)\s+\(h\)/
+                    );
+                    const cooldownTime = cooldownMatch
+                        ? cooldownMatch[1]
+                        : "N/A";
+
+                    // Display results
+                    document.getElementById("cooldownTime").textContent =
+                        cooldownTime + " hours";
+                    document.getElementById("detailedOutput").textContent =
+                        outputData;
+
+                    document.getElementById("loading").classList.remove("show");
+                    document.getElementById("results").classList.add("show");
+
+                    // Clean up virtual filesystem
+                    try {
+                        Module.FS.unlink("input.dat");
+                        Module.FS.unlink("input.txt");
+                    } catch (e) {
+                        console.log("Cleanup note:", e);
+                    }
+                } catch (error) {
+                    console.error("Calculation error:", error);
+                    document.getElementById("loading").classList.remove("show");
+                    alert(
+                        "Calculation failed: " +
+                            error.message +
+                            "\n\nCheck browser console for details."
+                    );
+                }
+            }
+        </script>
+    </body>
+</html>
