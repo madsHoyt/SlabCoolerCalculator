@@ -203,33 +203,56 @@ button {
     margin-top: 15px;
 }
 
-/* Loading Spinner */
-.loading {
+/* --- Loading animation --- */
+#loading {
     display: none;
     text-align: center;
-    padding: 20px;
+    margin-top: 20px;
 }
 
 .loading.show {
     display: block;
 }
 
-.spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
+.dots {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
+.dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 1;
+    animation: blink 1.5s infinite;
+}
+
+.dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.dots span:nth-child(2) {
+    animation-delay: 0.3s;
+}
+
+.dots span:nth-child(3) {
+    animation-delay: 0.6s;
+}
+
+@keyframes blink {
+    0%,
+    80%,
     100% {
-        transform: rotate(360deg);
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1.3);
     }
 }
 

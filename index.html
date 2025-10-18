@@ -8,6 +8,7 @@
             src="https://kit.fontawesome.com/144a64cf0a.js"
             crossorigin="anonymous"
         ></script>
+
         <link rel="stylesheet" href="styles.css" />
         <link rel="icon" href="favicon.ico" type="image/x-icon" />
     </head>
@@ -157,14 +158,17 @@
                 </div>
 
                 <div class="buttons">
-                    <button class="calculate-btn" onclick="calculate()">
+                    <button class="calculate-btn" onclick="startCalculation()">
                         Calculate Cooldown Time
                     </button>
                 </div>
 
                 <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p>Calculating cooldown time...</p>
+                    <div class="dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
                 </div>
 
                 <div class="results" id="results">
@@ -185,8 +189,18 @@
                         </summary>
                         <div class="output-data" id="detailedOutput"></div>
                     </details>
+                    <br />
+                    <button
+                        id="downloadBtn"
+                        class="calculate-btn"
+                        style="display: none"
+                        onclick="downloadOutput()"
+                    >
+                        Download Results
+                    </button>
                 </div>
                 <div>
+                    <br />
                     <p>
                         <b>Notice:</b> Adapted for a slab from Benjamin DEGLO DE
                         BESSES' pipe cooldt calculator.
@@ -202,7 +216,7 @@
             let layerCount = 2;
             let Module = null;
 
-            // Initialize the WebAssembly module
+            // --- Load the WebAssembly module ---
             CoolDTModule({
                 print: function (text) {
                     console.log("WASM stdout:", text);
@@ -225,41 +239,40 @@
                     );
                 });
 
+            // --- Layer management ---
             function addLayer() {
                 if (layerCount >= 19) {
                     alert("Maximum 19 layers allowed");
                     return;
                 }
-
                 const container = document.getElementById("layersContainer");
                 const newLayer = document.createElement("div");
                 newLayer.className = "layer";
                 newLayer.setAttribute("data-layer", layerCount);
                 newLayer.innerHTML = `
-                <div class="layer-header">
-                    <h3>Layer ${layerCount}</h3>
-                    <button class="delete-layer-btn" onclick="deleteLayer(this)"><b>X</b>
-</button>
-                </div>
-                <div class="input-group">
-                    <div class="input-field">
-                        <label>Length (m)</label>
-                        <input type="number" class="diameter" value="0.28" step="0.001">
-                    </div>
-                    <div class="input-field">
-                        <label>Conductivity (W/m/K)</label>
-                        <input type="number" class="conductivity" value="0.3" step="0.001">
-                    </div>
-                    <div class="input-field">
-                        <label>Density (kg/m³)</label>
-                        <input type="number" class="density" value="800" step="1">
-                    </div>
-                    <div class="input-field">
-                        <label>Heat Capacity (J/kg/K)</label>
-                        <input type="number" class="heatCapacity" value="2000" step="1">
-                    </div>
-                </div>
-            `;
+        <div class="layer-header">
+            <h3>Layer ${layerCount}</h3>
+            <button class="delete-layer-btn" onclick="deleteLayer(this)"><b>X</b></button>
+        </div>
+        <div class="input-group">
+            <div class="input-field">
+                <label>Length (m)</label>
+                <input type="number" class="diameter" value="0.28" step="0.001">
+            </div>
+            <div class="input-field">
+                <label>Conductivity (W/m/K)</label>
+                <input type="number" class="conductivity" value="0.3" step="0.001">
+            </div>
+            <div class="input-field">
+                <label>Density (kg/m³)</label>
+                <input type="number" class="density" value="800" step="1">
+            </div>
+            <div class="input-field">
+                <label>Heat Capacity (J/kg/K)</label>
+                <input type="number" class="heatCapacity" value="2000" step="1">
+            </div>
+        </div>
+    `;
                 container.appendChild(newLayer);
                 layerCount++;
             }
@@ -293,39 +306,40 @@
                 return inputData;
             }
 
-            function calculate() {
+            // --- Calculation ---
+            function startCalculation() {
+                const loadingEl = document.getElementById("loading");
+                loadingEl.style.display = "block";
+
                 if (!Module) {
                     alert(
                         "WebAssembly module is still loading. Please wait..."
                     );
+                    loadingEl.style.display = "none";
                     return;
                 }
 
-                document.getElementById("loading").classList.add("show");
-                document.getElementById("results").classList.remove("show");
+                // Let the browser render the loader
+                setTimeout(() => {
+                    calculate();
+                }, 50);
+            }
+
+            function calculate() {
+                const loadingEl = document.getElementById("loading");
+                const inputData = generateInputData();
 
                 try {
-                    // Generate input data
-                    const inputData = generateInputData();
-
-                    // Write input data to virtual filesystem
                     Module.FS.writeFile("input.dat", inputData);
 
-                    // Capture stdout
-                    let stdout = "";
-                    let stderr = "";
+                    let stdout = "",
+                        stderr = "";
+                    Module.print = (text) => (stdout += text + "\n");
+                    Module.printErr = (text) => (stderr += text + "\n");
 
-                    Module.print = function (text) {
-                        stdout += text + "\n";
-                    };
-                    Module.printErr = function (text) {
-                        stderr += text + "\n";
-                    };
-
-                    // Call the main function with input file argument
+                    // Call the main function
                     Module.callMain(["input.dat"]);
 
-                    // Read the output file
                     let outputData = "";
                     try {
                         outputData = Module.FS.readFile("input.txt", {
@@ -338,39 +352,53 @@
                             stderr;
                     }
 
-                    // Parse cooldown time from output
-                    const cooldownMatch = outputData.match(
-                        /Cool Down Time\s+([0-9.]+)\s+\(h\)/
-                    );
-                    const cooldownTime = cooldownMatch
-                        ? cooldownMatch[1]
-                        : "N/A";
+                    displayResults(outputData);
 
-                    // Display results
-                    document.getElementById("cooldownTime").textContent =
-                        cooldownTime + " hours";
-                    document.getElementById("detailedOutput").textContent =
-                        outputData;
-
-                    document.getElementById("loading").classList.remove("show");
-                    document.getElementById("results").classList.add("show");
-
-                    // Clean up virtual filesystem
+                    // Cleanup
                     try {
                         Module.FS.unlink("input.dat");
                         Module.FS.unlink("input.txt");
-                    } catch (e) {
-                        console.log("Cleanup note:", e);
-                    }
+                    } catch (e) {}
+
+                    loadingEl.style.display = "none";
                 } catch (error) {
                     console.error("Calculation error:", error);
-                    document.getElementById("loading").classList.remove("show");
-                    alert(
-                        "Calculation failed: " +
-                            error.message +
-                            "\n\nCheck browser console for details."
-                    );
+                    loadingEl.style.display = "none";
+                    alert("Calculation failed: " + error.message);
                 }
+            }
+
+            function displayResults(outputData) {
+                const cooldownMatch = outputData.match(
+                    /Cool Down Time\s+([0-9.]+)\s+\(h\)/
+                );
+                const cooldownTime = cooldownMatch ? cooldownMatch[1] : "N/A";
+
+                document.getElementById("cooldownTime").textContent =
+                    cooldownTime + " hours";
+                document.getElementById("detailedOutput").textContent =
+                    outputData;
+                document.getElementById("results").classList.add("show");
+                document.getElementById("downloadBtn").style.display =
+                    "inline-block";
+            }
+
+            // --- Download ---
+            function downloadOutput() {
+                const data =
+                    document.getElementById("detailedOutput").textContent;
+                if (!data) {
+                    alert("No data to download yet!");
+                    return;
+                }
+
+                const csvData = data.replace(/\t/g, ",");
+                const blob = new Blob([csvData], { type: "text/csv" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "cooldown_results.csv";
+                link.click();
+                URL.revokeObjectURL(link.href);
             }
         </script>
     </body>
