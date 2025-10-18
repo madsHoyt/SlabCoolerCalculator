@@ -11,6 +11,8 @@
 
         <link rel="stylesheet" href="styles.css" />
         <link rel="icon" href="favicon.ico" type="image/x-icon" />
+        <!--Chart.js-->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
         <div class="container">
@@ -198,6 +200,12 @@
                     >
                         Download Results
                     </button>
+                    <canvas
+                        id="tempGraph"
+                        width="800"
+                        height="400"
+                        style="margin-top: 20px"
+                    ></canvas>
                 </div>
                 <div>
                     <br />
@@ -368,6 +376,70 @@
                 }
             }
 
+            function plotTemperatureGraph(outputData) {
+                // Example: parse time vs temperature from your output
+                const lines = outputData.split("\n");
+                const time = [];
+                const temp = [];
+
+                lines.forEach((line) => {
+                    const parts = line.trim().split(/\s+/);
+                    // Adjust indices based on your output file
+                    if (
+                        parts.length >= 3 &&
+                        !isNaN(parts[1]) &&
+                        !isNaN(parts[2])
+                    ) {
+                        time.push(parseFloat(parts[1])); // column 2 = time (h)
+                        temp.push(parseFloat(parts[2])); // column 3 = temperature (°C)
+                    }
+                });
+
+                const ctx = document
+                    .getElementById("tempGraph")
+                    .getContext("2d");
+
+                // Destroy previous chart if exists
+                if (window.tempChart) window.tempChart.destroy();
+
+                window.tempChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: time,
+                        datasets: [
+                            {
+                                label: "Temperature (°C)",
+                                data: temp,
+                                borderColor: "rgba(0, 123, 255, 1)",
+                                backgroundColor: "rgba(0, 123, 255, 0.2)",
+                                fill: true,
+                                tension: 0.2,
+                                pointRadius: 3,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: true },
+                            title: {
+                                display: true,
+                                text: "Temperature vs Time",
+                            },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: "Time (h)" } },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: "Temperature (°C)",
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+
             function displayResults(outputData) {
                 const cooldownMatch = outputData.match(
                     /Cool Down Time\s+([0-9.]+)\s+\(h\)/
@@ -381,6 +453,12 @@
                 document.getElementById("results").classList.add("show");
                 document.getElementById("downloadBtn").style.display =
                     "inline-block";
+
+                // Let the browser repaint to show loader before heavy plotting
+                setTimeout(() => {
+                    plotTemperatureGraph(outputData);
+                    document.getElementById("loading").style.display = "none";
+                }, 20);
             }
 
             // --- Download ---
