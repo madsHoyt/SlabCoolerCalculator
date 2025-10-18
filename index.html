@@ -200,11 +200,18 @@
                     >
                         Download Results
                     </button>
+                    <h2 class="sub-head">Temperature Graphs</h2>
                     <canvas
-                        id="tempGraph"
+                        id="timeGraph"
                         width="800"
                         height="400"
-                        style="margin-top: 20px"
+                        style="margin-top: 20px; background-color: white"
+                    ></canvas>
+                    <canvas
+                        id="radiusGraph"
+                        width="800"
+                        height="400"
+                        style="margin-top: 20px; background-color: white"
                     ></canvas>
                 </div>
                 <div>
@@ -376,59 +383,115 @@
                 }
             }
 
-            function plotTemperatureGraph(outputData) {
-                // Example: parse time vs temperature from your output
+            function plotGraphs(outputData) {
                 const lines = outputData.split("\n");
+
                 const time = [];
-                const temp = [];
+                const tempSolid = [];
+                const radius = [];
+                const initialTemp = [];
+                const finalTemp = [];
 
                 lines.forEach((line) => {
+                    if (line.startsWith("#") || line.trim() === "") return;
                     const parts = line.trim().split(/\s+/);
-                    // Adjust indices based on your output file
-                    if (
-                        parts.length >= 3 &&
-                        !isNaN(parts[1]) &&
-                        !isNaN(parts[2])
-                    ) {
-                        time.push(parseFloat(parts[1])); // column 2 = time (h)
-                        temp.push(parseFloat(parts[2])); // column 3 = temperature (°C)
+                    if (parts.length >= 9) {
+                        time.push(parseFloat(parts[1])); // t(h)
+                        tempSolid.push(parseFloat(parts[2])); // Temp(solid)
+                        radius.push(parseFloat(parts[5])); // Half-Length (m)
+                        initialTemp.push(parseFloat(parts[7])); // Initial Temp
+                        finalTemp.push(parseFloat(parts[8])); // Final Temp
                     }
                 });
 
-                const ctx = document
-                    .getElementById("tempGraph")
+                // --- Time vs Solid Temp ---
+                const ctxTime = document
+                    .getElementById("timeGraph")
                     .getContext("2d");
+                if (window.timeChart) window.timeChart.destroy();
 
-                // Destroy previous chart if exists
-                if (window.tempChart) window.tempChart.destroy();
-
-                window.tempChart = new Chart(ctx, {
+                window.timeChart = new Chart(ctxTime, {
                     type: "line",
                     data: {
                         labels: time,
                         datasets: [
                             {
-                                label: "Temperature (°C)",
-                                data: temp,
-                                borderColor: "rgba(0, 123, 255, 1)",
-                                backgroundColor: "rgba(0, 123, 255, 0.2)",
+                                label: "Solid Temp (°C)",
+                                data: tempSolid,
+                                borderColor: "darkgreen",
+                                backgroundColor: "rgba(0,128,0,0.1)",
                                 fill: true,
-                                tension: 0.2,
-                                pointRadius: 3,
+                                tension: 0.3,
+                                pointRadius: 2,
                             },
                         ],
                     },
                     options: {
                         responsive: true,
                         plugins: {
-                            legend: { display: true },
                             title: {
                                 display: true,
-                                text: "Temperature vs Time",
+                                text: "Time vs Solid Temperature",
                             },
                         },
                         scales: {
                             x: { title: { display: true, text: "Time (h)" } },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: "Temperature (°C)",
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // --- Radius vs Initial/Final Temp ---
+                const ctxRadius = document
+                    .getElementById("radiusGraph")
+                    .getContext("2d");
+                if (window.radiusChart) window.radiusChart.destroy();
+
+                window.radiusChart = new Chart(ctxRadius, {
+                    type: "line",
+                    data: {
+                        labels: radius,
+                        datasets: [
+                            {
+                                label: "Initial Temp (°C)",
+                                data: initialTemp,
+                                borderColor: "orange",
+                                backgroundColor: "rgba(255,165,0,0.1)",
+                                fill: false,
+                                tension: 0.3,
+                                pointRadius: 2,
+                            },
+                            {
+                                label: "Final Temp (°C)",
+                                data: finalTemp,
+                                borderColor: "blue",
+                                backgroundColor: "rgba(0,0,255,0.1)",
+                                fill: false,
+                                tension: 0.3,
+                                pointRadius: 2,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: "Radius vs Initial/Final Temperature",
+                            },
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: "Half-Length (m)",
+                                },
+                            },
                             y: {
                                 title: {
                                     display: true,
@@ -456,7 +519,7 @@
 
                 // Let the browser repaint to show loader before heavy plotting
                 setTimeout(() => {
-                    plotTemperatureGraph(outputData);
+                    plotGraphs(outputData);
                     document.getElementById("loading").style.display = "none";
                 }, 20);
             }
