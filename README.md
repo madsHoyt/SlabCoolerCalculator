@@ -52,7 +52,23 @@ This will produce an output file, typically:
 The .txt file contains calculated cooldown results.
 
 ## 4. Updating the Web Backend
+Note: Before running emcc, make sure that the Emscripten SDK (emsdk) is installed and properly set up. You should have run the following steps at least once:
 
+Install emsdk (if not already installed)
+
+Activate the latest version:
+
+    .\emsdk activate latest
+
+
+Load the environment variables into the current session:
+
+    .\emsdk_env.bat
+
+
+This ensures that emcc is available in PowerShell and all dependencies are configured correctly.
+
+Then you can run the compilation command:
 To compile the project to WebAssembly for web use, run the following in PowerShell:
 
     PS C:\cygwin64\home\cooler> emcc source/main.c source/algebra.c source/alloc.c source/automatic.c source/check-data.c source/input.c source/mesh.c source/messages.c source/solution.c source/steady-state.c source/transient.c -o cooldt.js -s EXPORTED_FUNCTIONS='["_main"]' -s EXPORTED_RUNTIME_METHODS='["FS","callMain","ccall","cwrap"]' -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_NAME="CoolDTModule" -s FORCE_FILESYSTEM=1 -O3
